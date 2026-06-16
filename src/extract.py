@@ -79,9 +79,7 @@ def print_extract_report(df: pd.DataFrame) -> None:
     print(df.head())
 
     logger.info("\nИнформация о данных:")
-    buffer = []
-    df.info(buf=buffer)
-    logger.info("\n".join(buffer))
+    print(df.info())
 
     logger.info("\nСтатистика по числовым колонкам:")
     print(df.describe())

@@ -1,3 +1,4 @@
+import sys
 import logging
 import logging.config
 import yaml
@@ -6,20 +7,18 @@ from typing import Dict, Any, Optional
 
 
 def setup_logging(config_path: str = 'config/logging.conf') -> None:
-    """Функция настривает логирование из файла или basicConfig"""
     config_file = Path(config_path)
 
     if config_file.exists():
         try:
-            logging.config.fileConfig(config_path)
-            logging.getLogger(__name__).info(f"Логирование настроено из {config_path}")
+            logging.config.fileConfig(config_path, disable_existing_loggers=False)
+            get_logger(__name__).info(f"Логирование настроено из {config_path}")
         except Exception as e:
             logging.basicConfig(level=logging.INFO)
-            logging.getLogger(__name__).error(f"Ошибка загрузки {config_path}, использую basicConfig")
-
+            get_logger(__name__).error(f"Ошибка загрузки {config_path}: {e}. Использую basicConfig")
     else:
         logging.basicConfig(level=logging.INFO)
-        logging.getLogger(__name__).warning(f"Файл {config_path} не найден. Использую basicConfig")
+        get_logger(__name__).warning(f"Файл {config_path} не найден. Использую basicConfig")
 
 
 def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
