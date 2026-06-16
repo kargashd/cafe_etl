@@ -1,0 +1,8 @@
+paths:
+  raw_data: "data/raw/dirty_cafe_sales.csv"
+  processed_data: "data/processed/clean_cafe_sales.csv"
+  output_plots: "data/output/plots/"
+
+logs:
+  level: "INFO"
+  file: "logs/etl.log"
