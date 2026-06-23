@@ -14,20 +14,35 @@ def clean_dates(df: pd.DataFrame) -> pd.DataFrame:
         logger.error("Колонка Transaction_Date отсутствует")
         raise KeyError("Transaction_Date column not found")
 
-    df['Transaction_Date'] = df['Transaction_Date'].astype(str).str.strip()
-    df['Transaction_Date'] = pd.to_datetime(df['Transaction_Date'], dayfirst=True, errors='coerce')
+
+    try:
+        df['Transaction_Date'] = df['Transaction_Date'].astype(str).str.strip()
+        df['Transaction_Date'] = pd.to_datetime(df['Transaction_Date'], dayfirst=True, errors='coerce')
+    except Exception as e:
+        logger.error(f"Ошибка при преобразовании дат: {e}")
+
+        raise
 
     invalid_count = df['Transaction_Date'].isna().sum()
 
     if invalid_count > 0:
         logger.warning(f"Найдено {invalid_count} некорректных дат. Удаляем...")
-        df = df.dropna(subset=['Transaction_Date'])
-        logger.info(f"Осталось {len(df)} строк")
+        try:
+            df = df.dropna(subset=['Transaction_Date'])
+        except Exception as e:
+            logger.error(f"Ошибка при удалении некорректных дат: {e}")
+            raise
+            logger.info(f"Осталось {len(df)} строк")
 
-    df['Month'] = df['Transaction_Date'].dt.month
-    df['Month_Name'] = df['Transaction_Date'].dt.strftime('%B')
-    df['Day_Of_Week'] = df['Transaction_Date'].dt.dayofweek
-    df['Day_Name'] = df['Transaction_Date'].dt.strftime('%a')
+    try:
+        df['Month'] = df['Transaction_Date'].dt.month
+        df['Month_Name'] = df['Transaction_Date'].dt.strftime('%B')
+        df['Day_Of_Week'] = df['Transaction_Date'].dt.dayofweek
+        df['Day_Name'] = df['Transaction_Date'].dt.strftime('%a')
+    except Exception as e:
+        logger.error(f"Ошибка при создании колонок с датой: {e}")
+
+        raise
 
     logger.info(f"Диапазон дат: {df['Transaction_Date'].min()} - {df['Transaction_Date'].max()}")
     return df
@@ -44,12 +59,22 @@ def fix_total_spent(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Отсутствуют колонки {missing}")
         raise KeyError(f"Missing columns: {missing}")
 
-    calculated = df['Quantity'] * df['Price_Per_Unit']
-    mismatches = (df['Total_Spent'] != calculated).sum()
+    try:
+        calculated = df['Quantity'] * df['Price_Per_Unit']
+        mismatches = (df['Total_Spent'] != calculated).sum()
+    except Exception as e:
+        logger.error(f"Ошибка при расчёте Total_Spent: {e}")
+
+        raise
 
     if mismatches > 0:
         logger.warning(f"Найдено {mismatches} несоответствий. Исправляем...")
-        df['Total_Spent'] = calculated
+        try:
+            df['Total_Spent'] = calculated
+        except Exception as e:
+            logger.error(f"Ошибка при исправлении Total_Spent: {e}")
+
+            raise
     else:
         logger.info(f"Все суммы корректны")
 
@@ -64,9 +89,13 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
         logger.error("Transaction_Id нет в df")
         raise KeyError("Transaction_Id column not found")
 
-    before = len(df)
-    df = df.drop_duplicates(subset=['Transaction_Id'], keep='first')
-    removed = before - len(df)
+    try:
+        before = len(df)
+        df = df.drop_duplicates(subset=['Transaction_Id'], keep='first')
+        removed = before - len(df)
+    except Exception as e:
+        logger.error(f"Ошибка при удалении дубликатов: {e}")
+        raise
 
     if removed > 0:
         logger.info(f"Удалено {removed} дубликатов")
@@ -87,13 +116,21 @@ def handle_negative_values(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Потеряны колонки {missing}")
         raise KeyError(f"Missing columns: {missing}")
 
-    before = len(df)
-    mask = (df['Quantity'] < 0) | (df['Price_Per_Unit'] < 0) | (df['Total_Spent'] < 0)
-    negative_count = mask.sum()
+    try:
+        before = len(df)
+        mask = (df['Quantity'] < 0) | (df['Price_Per_Unit'] < 0) | (df['Total_Spent'] < 0)
+        negative_count = mask.sum()
+    except Exception as e:
+        logger.error(f"Ошибка при проверке отрицательных значений: {e}")
+        raise
 
     if negative_count > 0:
         logger.warning(f"Найдено {negative_count} строк с отрицательными значениями. Удаляем...")
-        df = df[~mask]
+        try:
+            df = df[~mask]
+        except Exception as e:
+            logger.error(f"Ошибка при удалении отрицательных значений: {e}")
+            raise
         logger.info(f"Удалено {before - len(df)} строк")
     else:
         logger.info("Отрицательных значений не найдено")
@@ -107,9 +144,13 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
 
     logger.info("Проверка пропусков...")
 
-    before = len(df)
-    df = df.dropna(subset=critical_cols)
-    removed = before - len(df)
+    try:
+        before = len(df)
+        df = df.dropna(subset=critical_cols)
+        removed = before - len(df)
+    except Exception as e:
+        logger.error(f"Ошибка при удалении пропусков: {e}")
+        raise
 
     if removed > 0:
         logger.warning(f"Удалено {removed} строк с пропусками")
@@ -135,10 +176,19 @@ def add_price_category(df: pd.DataFrame) -> pd.DataFrame:
             return "Medium"
         return "High"
 
-    df["Price_Category"] = df["Price_Per_Unit"].apply(categorize)
+    try:
+        df["Price_Category"] = df["Price_Per_Unit"].apply(categorize)
 
-    counts = df["Price_Category"].value_counts()
-    logger.info(f"Категории: Low={counts.get('Low', 0)}, Medium={counts.get('Medium', 0)}, High={counts.get('High', 0)}")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении категорий цен: {e}")
+        raise
+
+    try:
+        counts = df["Price_Category"].value_counts()
+        logger.info(f"Категории: Low={counts.get('Low', 0)}, Medium={counts.get('Medium', 0)}, High={counts.get('High', 0)}")
+    except Exception as e:
+        logger.error(f"Ошибка при подсчёте категорий: {e}")
+        raise
 
     return df
 
@@ -153,12 +203,16 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
         logger.error("DataFrame пуст")
         raise ValueError("DataFrame is empty")
 
-    df = clean_dates(df)
-    df = fix_total_spent(df)
-    df = remove_duplicates(df)
-    df = handle_negative_values(df)
-    df = handle_missing_values(df)
-    df = add_price_category(df)
+    try:
+        df = clean_dates(df)
+        df = fix_total_spent(df)
+        df = remove_duplicates(df)
+        df = handle_negative_values(df)
+        df = handle_missing_values(df)
+        df = add_price_category(df)
+    except Exception as e:
+        logger.error(f"Ошибка в процессе трансформации: {e}")
+        raise
 
     logger.info(f"Итоговое количество строк: {len(df)}")
     logger.info("=" * 60)
